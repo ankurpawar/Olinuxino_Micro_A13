@@ -1,0 +1,128 @@
+Steps to cross compile Linux kernel for Olimex Olinuxino Micro A-13 board
+-------------------------------------------------------------------------------
+
+Board - Olimex Olinuxino Micro A-13
+SOC - Allwinner A-13 (A-13 is not ARM cortex A13)
+Linux Kernel -
+Toolchain -
+Bootloader -
+Filesystem - 
+Host system - 
+-------------------------------------------------------------------------------
+1. Datasheets and reference manuals
+For reference download Allwinner A-13 datasheet and read sections that will 
+help in board bringup.
+
+-------------------------------------------------------------------------------
+2. Download source code
+
+-------------------------------------------------------------------------------
+3. Download a pre built toolchain from linaro or mentor graphics and install 
+it.Then export path where tool chain is present.
+~$ export PATH=TOOLCHAIN/tools/bin:$PATH
+
+Toolchain from scratch is different topic. Steps to build that is not 
+mentioned here.
+-------------------------------------------------------------------------------
+4.Download U-boot from github sunxi uboot
+read /u-boot-sunxi/arch/arm/cpu/armv7/start.S
+read /u-boot-sunxi/arch/arm/cpu/armv7/lowlevel_init.S
+
+
+Preparing uboot(these steps depend on board type, may not be applicable to 
+other board)
+~$ chmod 777 mkconfig 
+~$ chmod 777 tools/script/make-asm-offset (path of this file?)
+In new uboot source code this is moved to Kbuild in topmost directory.
+~$ make ARCH=arm CROSS_COMPILE=arm-unknown-linux-gnueabi- 
+A13-OlinuXino-Micro_config
+~$ make ARCH=arm CROSS_COMPILE=arm-unknown-linux-gnueabi- 
+A13-OLinuXino_config
+-this is present in uboot top level directory file boards.cfg
+-at the end to use all the tools available in the bin directory
+~$ make ARCH=arm CROSS_COMPILE=arm-unknown-linux-gnueabi-
+
+the last two steps will make uboot.lds, uboot.bin, uboot_spl.bin(first 
+stage bootloader)
+uboot_spl.bin loads uboot.bin
+
+inside uboot /tools/mkimage export this path,this will make the kernel 
+compressed image
+-------------------------------------------------------------------------------
+5.Kernel
+Download kernel zip or clone it using git
+cd to kernel directory
+
+~$make ARCH=arm CROSS_COMPILE=arm-unknown-linux-gnueabi- a13_defconfig
+
+config files are present in linux/arch/[platform]/configs
+/arch/arm/configs 
+sun5i_defconfig 
+a13_defconfig
+
+~$make ARCH=arm CROSS_COMPILE=arm-unknown-linux-gnueabi- menuconfig
+enable Device Drivers -> Network device support -> Wireless LAN-> 
+realtek 8188E usb wifi
+enable Device Drivers -> Network device support -> USB Network Adapters -> 
+Davicom DM 9601
+open .config file and change #GPIO_UGLY to GPIO_UGLY=y
+
+disable mali driver and frame buffer if LCD is not plugged into the board.
+
+~$make ARCH=arm CROSS_COMPILE=arm-unknown-linux-gnueabi- uImage
+remember to export the mkimage path, otherwise the uImage will not be created
+
+console output
+LD      arch/arm/boot/compressed/vmlinux 
+  OBJCOPY arch/arm/boot/zImage 
+  Kernel: arch/arm/boot/zImage is ready 
+  UIMAGE  arch/arm/boot/uImage 
+"mkimage" command not found - U-Boot images will not be built 
+make[1]: *** [arch/arm/boot/uImage] Error 1 
+make: *** [uImage] Error 2 
+
+CALL    scripts/checksyscalls.sh 
+  CHK     include/generated/compile.h 
+  CHK     kernel/config_data.h 
+  Kernel: arch/arm/boot/Image is ready 
+  Kernel: arch/arm/boot/zImage is ready 
+  UIMAGE  arch/arm/boot/uImage 
+Image Name:   Linux-3.4.103-00033-g9a1cd03-dir 
+Created:      Wed May  6 07:44:23 2015 
+Image Type:   ARM Linux Kernel Image (uncompressed) 
+Data Size:    4103392 Bytes = 4007.22 kB = 3.91 MB 
+Load Address: 40008000 
+Entry Point:  40008000
+
+Use INSTALL_MOD_PATH to build and install the modules in non standard path.
+
+~$make ARCH=arm CROSS_COMPILE=arm-unknown-linux-gnueabi- 
+INSTALL_MOD_PATH=out modules
+
+~$make ARCH=arm CROSS_COMPILE=arm-unknown-linux-gnueabi- 
+INSTALL_MOD_PATH=out modules_install
+
+-------------------------------------------------------------------------------
+6.Preparing the SD card
+Insert the SD card in the system and find the device node for the SD card 
+and all the partitions on the SD card
+~$fdisk -l
+if device node is mmcblk0. Create partitions in SD card
+~$sudo fdisk -u=sectors /dev/mmcblk0
+
+make 2 primary partitions 1st one starting from 2048 to 34815 and 2nd one 
+starting from 34816  
+
+~$ dd if=spl/sunxi-spl.bin of=${card} bs=1024 seek=8
+~$ dd if=u-boot.bin of=${card} bs=1024 seek=32
+
+As an alternative, you can use the combined u-boot-sunxi-with-spl.bin: 
+~$ dd if=u-boot-sunxi-with-spl.bin of=${card} bs=1024 seek=8
+-------------------------------------------------------------------------------
+7.File system
+
+mele_debian_armhf_minimal.cpio.gz
+~$ gunzip -dk mele_debian_armhf_minimal.cpio.gz
+~$ sudo cpio -idv < /path/to/mele_debian_armhf_minimal.cpio
+
+
