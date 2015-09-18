@@ -1,13 +1,21 @@
 Steps to cross compile Linux kernel for Olimex Olinuxino Micro A-13 board
+
 -------------------------------------------------------------------------------
 
 Board - Olimex Olinuxino Micro A-13
+
 SOC - Allwinner A-13 (A-13 is not ARM cortex A13)
-Linux Kernel -
-Toolchain -
-Bootloader -
-Filesystem - 
-Host system - 
+
+Linux Kernel - linux 3.4 sunxi
+
+Toolchain - arm-linux-gnueabihf 
+
+Bootloader - u-boot sunxi
+
+Filesystem - mele_debian_armhf_minimal
+
+Host system - Ubuntu 14.04 
+
 -------------------------------------------------------------------------------
 1. Datasheets and reference manuals
 For reference download Allwinner A-13 datasheet and read sections that will 
@@ -16,51 +24,75 @@ help in board bringup.
 -------------------------------------------------------------------------------
 2. Download source code
 
--------------------------------------------------------------------------------
-3. Download a pre built toolchain from linaro or mentor graphics and install 
-it.Then export path where tool chain is present.
-~$ export PATH=TOOLCHAIN/tools/bin:$PATH
+olimex_board_bringup
+|
+|---build
+|   `--board_modules
+`---packages
+    |--linux-sunxi
+    |--script.bin
+    `--u-boot-sunxi
 
-Toolchain from scratch is different topic. Steps to build that is not 
-mentioned here.
 -------------------------------------------------------------------------------
-4.Download U-boot from github sunxi uboot
+3. Toolchain 
+
+Download a pre built toolchain from linaro or mentor graphics and install 
+it.Make sure that the path where the toolchain is installed is present in the
+PATH environment variable. If it is not present then it should be added or
+exported everytime when a new shell is opened.
+
+Another option is to make a complete toolchain from scratch.Toolchain from 
+scratch is a different topic and the steps involved are not mentioned here.
+
+-------------------------------------------------------------------------------
+4. U-Boot
+
+~$ cd packages
+
+Clone the git repository https://github.com/linux-sunxi/u-boot-sunxi.git
+~$ git clone https://github.com/linux-sunxi/u-boot-sunxi.git
+
+Download U-boot from github sunxi uboot
 read /u-boot-sunxi/arch/arm/cpu/armv7/start.S
 read /u-boot-sunxi/arch/arm/cpu/armv7/lowlevel_init.S
 
+To find all the borad configurations available look inside 
+u-boot-sunxi/configs here A13-OLinuXinoM_defconfig is available.
+(in older u-boot configuration was available in boards.cfg file with
+name A13-OlinuXino-Micro_config)
 
-Preparing uboot(these steps depend on board type, may not be applicable to 
-other board)
-~$ chmod 777 mkconfig 
-~$ chmod 777 tools/script/make-asm-offset (path of this file?)
-In new uboot source code this is moved to Kbuild in topmost directory.
-~$ make ARCH=arm CROSS_COMPILE=arm-unknown-linux-gnueabi- 
-A13-OlinuXino-Micro_config
-~$ make ARCH=arm CROSS_COMPILE=arm-unknown-linux-gnueabi- 
-A13-OLinuXino_config
--this is present in uboot top level directory file boards.cfg
--at the end to use all the tools available in the bin directory
+~$ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- A13-OLinuXinoM_defconfig
+'-' at the end , to use all the cross tools(like gcc, ld, objcopy) available
+ in the bin directory
+
+~$ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- menuconfig 
+under "ARM architecture" select "Enable workarounds for booting old kernels"
+
 ~$ make ARCH=arm CROSS_COMPILE=arm-unknown-linux-gnueabi-
 
-the last two steps will make uboot.lds, uboot.bin, uboot_spl.bin(first 
+the last step will make uboot.lds, uboot.bin, uboot_spl.bin(first 
 stage bootloader)
 uboot_spl.bin loads uboot.bin
 
 inside uboot /tools/mkimage export this path,this will make the kernel 
 compressed image
+
 -------------------------------------------------------------------------------
 5.Kernel
+
 Download kernel zip or clone it using git
 cd to kernel directory
 
-~$make ARCH=arm CROSS_COMPILE=arm-unknown-linux-gnueabi- a13_defconfig
+~$make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- a13_defconfig
 
+Default configuration
 config files are present in linux/arch/[platform]/configs
 /arch/arm/configs 
 sun5i_defconfig 
 a13_defconfig
 
-~$make ARCH=arm CROSS_COMPILE=arm-unknown-linux-gnueabi- menuconfig
+Configure the kernel
+~$make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- menuconfig
 enable Device Drivers -> Network device support -> Wireless LAN-> 
 realtek 8188E usb wifi
 enable Device Drivers -> Network device support -> USB Network Adapters -> 
@@ -69,60 +101,207 @@ open .config file and change #GPIO_UGLY to GPIO_UGLY=y
 
 disable mali driver and frame buffer if LCD is not plugged into the board.
 
-~$make ARCH=arm CROSS_COMPILE=arm-unknown-linux-gnueabi- uImage
-remember to export the mkimage path, otherwise the uImage will not be created
+~$make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- uImage
 
-console output
-LD      arch/arm/boot/compressed/vmlinux 
-  OBJCOPY arch/arm/boot/zImage 
-  Kernel: arch/arm/boot/zImage is ready 
-  UIMAGE  arch/arm/boot/uImage 
-"mkimage" command not found - U-Boot images will not be built 
-make[1]: *** [arch/arm/boot/uImage] Error 1 
-make: *** [uImage] Error 2 
-
-CALL    scripts/checksyscalls.sh 
-  CHK     include/generated/compile.h 
-  CHK     kernel/config_data.h 
-  Kernel: arch/arm/boot/Image is ready 
-  Kernel: arch/arm/boot/zImage is ready 
-  UIMAGE  arch/arm/boot/uImage 
-Image Name:   Linux-3.4.103-00033-g9a1cd03-dir 
-Created:      Wed May  6 07:44:23 2015 
-Image Type:   ARM Linux Kernel Image (uncompressed) 
-Data Size:    4103392 Bytes = 4007.22 kB = 3.91 MB 
-Load Address: 40008000 
+  Kernel: arch/arm/boot/Image is ready
+  Kernel: arch/arm/boot/zImage is ready
+  UIMAGE  arch/arm/boot/uImage
+Image Name:   Linux-3.4.103-00033-g9a1cd03-dir
+Created:      Sat Sep 12 16:33:41 2015
+Image Type:   ARM Linux Kernel Image (uncompressed)
+Data Size:    3860456 Bytes = 3769.98 kB = 3.68 MB
+Load Address: 40008000
 Entry Point:  40008000
+  Image arch/arm/boot/uImage is ready
+
 
 Use INSTALL_MOD_PATH to build and install the modules in non standard path.
+These modules are intended for the olimex board not for the host PC.
 
-~$make ARCH=arm CROSS_COMPILE=arm-unknown-linux-gnueabi- 
-INSTALL_MOD_PATH=out modules
+~$make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- \
+INSTALL_MOD_PATH=../../build/board_modules modules
 
-~$make ARCH=arm CROSS_COMPILE=arm-unknown-linux-gnueabi- 
-INSTALL_MOD_PATH=out modules_install
+~$make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- \ 
+INSTALL_MOD_PATH=../../build/board_mdoules modules_install
 
 -------------------------------------------------------------------------------
-6.Preparing the SD card
+6. Preparing the SD card
+
 Insert the SD card in the system and find the device node for the SD card 
 and all the partitions on the SD card
-~$fdisk -l
+~$ls /dev
 if device node is mmcblk0. Create partitions in SD card
 ~$sudo fdisk -u=sectors /dev/mmcblk0
 
-make 2 primary partitions 1st one starting from 2048 to 34815 and 2nd one 
-starting from 34816  
+enter p command to view all the partitions already present on the SD card.
+use d command to delete all the existing partition on SD card.
+ 
+create a new primary partition with command n p 1
+2048 to 34815
 
-~$ dd if=spl/sunxi-spl.bin of=${card} bs=1024 seek=8
-~$ dd if=u-boot.bin of=${card} bs=1024 seek=32
+create 2nd primary partiton with command n p 2
+starting form 34815 to the end
 
-As an alternative, you can use the combined u-boot-sunxi-with-spl.bin: 
-~$ dd if=u-boot-sunxi-with-spl.bin of=${card} bs=1024 seek=8
+write the partitons to SD card with command w
+
+Format SD card with file system vfat for 1st partition and ext3 for 2nd 
+partition
+
+~ mkfs.vfat /dev/mmcblk0p1
+~ mkfs.ext3 /dev/mmcblk0p2
+
 -------------------------------------------------------------------------------
-7.File system
+7. File system
 
-mele_debian_armhf_minimal.cpio.gz
+download prebuilt filesystem from the following path 
+http://hands.com/~lkcl/mele_debian_armhf_minimal.cpio.gz 
+
+extract the gz filesystem file 
 ~$ gunzip -dk mele_debian_armhf_minimal.cpio.gz
-~$ sudo cpio -idv < /path/to/mele_debian_armhf_minimal.cpio
+
+mount EXT3 partiton of SD card
+~$ mount /dev/mmcblk0p2 /mnt
+
+~$ cpio -idv < /path/to/mele_debian_armhf_minimal.cpio
+
+~$ umount /mnt
+
+-------------------------------------------------------------------------------
+8. Write U-boot and Kernel
+
+When u-boot was built output was u-boot-sunxi-with-spl.bin this file contains
+both u-boot and sunxi-spl. This has to be written on SD card starting at 
+sector 8 
+
+~$ dd if=u-boot-sunxi-with-spl.bin of=/dev/sdX bs=1024 seek=8
+
+Write the kernel image and script.bin in the 1st partition
+~$ mount /dev/mmcblk0p1 /mnt/
+~$ cp u-boot-sunxi/arch/arm/boot/uImage /mnt/
+~$ cp packages/script.bin /mnt/
+
+Create a boot.cmd file in the 1st partition and convert it to boot.scr file 
+using mkimage.
+~$ mkimage -C none -A arm -T script -d /mnt/boot.cmd /mnt/boot.scr
+
+~$ umount /mnt
 
 
+Write the kernel modules that will be loaded dynamically in 2nd partition
+~$ mount /dev/mmcblk0p2 /mnt/
+~$ cp -a ../../build/board_modules/lib/modules/3.4.103-00033-g9a1cd03-dirty/ \
+/mnt/lib/modules/
+~$ umount /mnt
+
+-------------------------------------------------------------------------------
+ERRORS
+
+./scripts/dtc-version.sh: line 17: dtc: command not found
+./scripts/dtc-version.sh: line 18: dtc: command not found
+*** Your dtc is too old, please upgrade to dtc 1.4 or newer
+
+To resolve this install device-tree-compiler
+
+------------------------
+  DTC     arch/arm/dts/sun5i-a10s-auxtek-t003.dtb
+In file included from arch/arm/dts/sun5i-a10s.dtsi:47:0,
+                 from arch/arm/dts/sun5i-a10s-auxtek-t003.dts:44:
+arch/arm/dts/sun5i.dtsi:47:39: fatal error: dt-bindings/dma/sun4i-a10.h: No 
+such file or directory compilation terminated.
+make[2]: *** [arch/arm/dts/sun5i-a10s-auxtek-t003.dtb] Error 1
+make[1]: *** [arch-dtbs] Error 2
+make: *** [dts/dt.dtb] Error 2
+
+Open the file /u-boot-sunxi/arch/arm/dts/include/dt-bindings it will show a
+path ../../../../include/dt-bindings. When the source was cloned from git
+this path came into the file. Create a softlink which has the path
+u-boot-sunxi/include/dt-bindings/ 
+
+~$ln -s ../../../../include/dt-bindings \
+dt-bindings
+
+---------------------------
+OBJCOPY arch/arm/boot/zImage
+  Kernel: arch/arm/boot/zImage is ready
+  UIMAGE  arch/arm/boot/uImage
+"mkimage" command not found - U-Boot images will not be built
+make[1]: *** [arch/arm/boot/uImage] Error 1
+
+export the mkimage script path 
+~$export PATH=$PATH:path/to/u-boot-sunxi/tools
+---------------------------
+CC [M]  drivers/gpu/mali/ump/linux/mali_osk_atomics.o
+drivers/gpu/mali/ump/linux/mali_osk_atomics.c:1:1: error: expected identifier
+ or ‘(’ before ‘.’ token
+make[4]: *** [drivers/gpu/mali/ump/linux/mali_osk_atomics.o] Error 1
+make[3]: *** [drivers/gpu/mali/ump] Error 2
+make[2]: *** [drivers/gpu/mali] Error 2
+make[1]: *** [drivers/gpu] Error 2
+make: *** [drivers] Error 2
+Create softlinks to resolve this error
+ln -s ../../mali/linux/mali_osk_atomics.c mali_osk_atomics.c 
+ln -s ../../mali/linux/mali_osk_locks.c mali_osk_locks.c 
+ln -s ../../mali/linux/mali_osk_math.c mali_osk_math.c 
+ln -s ../../mali/linux/mali_osk_memory.c mali_osk_memory.c 
+ln -s ../../mali/linux/mali_osk_misc.c mali_osk_misc.c 
+
+---------------------------
+When board is powered on
+
+Setting up a 800x480 lcd console (overscan 0x0)
+In:    serial
+Out:   vga
+Err:   vga
+Net:   No ethernet found.
+starting USB...
+USB0:   USB EHCI 1.00
+USB1:   USB OHCI 1.0
+scanning bus 0 for devices... 1 USB Device(s) found
+Hit any key to stop autoboot:  0 
+switch to partitions #0, OK
+mmc0 is current device
+Scanning mmc 0:1...
+
+USB device 0: unknown device
+No ethernet found.
+missing environment variable: pxeuuid                                                                    
+missing environment variable: bootfile                                                                   
+Retrieving file: pxelinux.cfg/00000000                                                                   
+No ethernet found.                                                                                       
+missing environment variable: bootfile                                                                   
+Retrieving file: pxelinux.cfg/0000000                                                                    
+No ethernet found.                                                                                       
+missing environment variable: bootfile                                                                   
+Retrieving file: pxelinux.cfg/000000                                                                     
+No ethernet found.                                                                                       
+missing environment variable: bootfile                                                                   
+Retrieving file: pxelinux.cfg/00000                                                                      
+No ethernet found.                                                                                       
+missing environment variable: bootfile                                                                   
+Retrieving file: pxelinux.cfg/0000                                                                       
+No ethernet found.                                                                                       
+missing environment variable: bootfile                                                                   
+Retrieving file: pxelinux.cfg/000                                                                        
+No ethernet found.                                                                                       
+missing environment variable: bootfile
+Retrieving file: pxelinux.cfg/00
+No ethernet found.
+missing environment variable: bootfile
+Retrieving file: pxelinux.cfg/0
+No ethernet found.
+missing environment variable: bootfile
+Retrieving file: pxelinux.cfg/default-arm-sunxi
+No ethernet found.
+missing environment variable: bootfile
+Retrieving file: pxelinux.cfg/default-arm
+No ethernet found.
+missing environment variable: bootfile
+Retrieving file: pxelinux.cfg/default
+No ethernet found.
+Config file not found
+No ethernet found.
+=>
+
+To resolve this create boot.scr in 1st partition of sd card,
+and Enable workarounds for booting old kernels in uboot menuconfig
+these steps are mentioned in the section 4. U-Boot
