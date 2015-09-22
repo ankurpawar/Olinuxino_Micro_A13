@@ -1,0 +1,18 @@
+Steps to cross compile Linux kernel for Olimex Olinuxino Micro A-13 board
+
+-------------------------------------------------------------------------------
+Board - Olimex Olinuxino Micro A-13
+
+SOC - Allwinner A-13 (A-13 is not ARM cortex A13)
+
+Linux Kernel - linux sunxi-next
+
+Toolchain - arm-linux-gnueabihf
+
+Bootloader - u-boot mainline
+
+Filesystem - mele_debian_armhf_minimal
+
+Host system - Ubuntu 14.04
+
+-------------------------------------------------------------------------------
