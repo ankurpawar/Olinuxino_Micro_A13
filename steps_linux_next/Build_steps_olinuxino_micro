@@ -16,3 +16,171 @@ Filesystem - mele_debian_armhf_minimal
 Host system - Ubuntu 14.04
 
 -------------------------------------------------------------------------------
+1. Datasheets and reference manuals
+For reference download Allwinner A-13 datasheet and read sections that will
+help in board bringup.
+
+-------------------------------------------------------------------------------
+2. Download source code
+
+olimex_board_bringup
+|
+|---build
+|   `--board_modules
+`---packages
+    |--linux
+    `--u-boot
+
+-------------------------------------------------------------------------------
+3. Toolchain
+
+Download a pre built toolchain from linaro or mentor graphics and install
+it.Make sure that the path where the toolchain is installed is present in the
+PATH environment variable. If it is not present then it should be added or
+exported everytime when a new shell is opened.
+
+Another option is to make a complete toolchain from scratch.Toolchain from
+scratch is a different topic and the steps involved are not mentioned here.
+
+
+-------------------------------------------------------------------------------
+4. U-boot
+
+Mailine u-boot will be used 
+~$ cd packages
+~$ git clone http://git.denx.de/u-boot.git
+~$ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- A13-OLinuXinoM_defconfig
+~$ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf-
+
+-------------------------------------------------------------------------------
+5. Linux kernel
+
+~$ cd packages
+~$ git clone git://github.com/mripard/linux.git
+
+~$ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- sunxi_defconfig
+
+To do any changes in the kernel configuration
+~$ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- menuconfig
+~$ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- zImage dtbs
+
+~$ make ARCH=arm \
+	CROSS_COMPILE=arm-linux-gnueabihf- \
+	INSTALL_MOD_PATH=../../build/board_modules modules
+
+~$ make ARCH=arm \
+	CROSS_COMPILE=arm-linux-gnueabihf- \
+	INSTALL_MOD_PATH=../../build/board_modules modules_install
+
+-------------------------------------------------------------------------------
+SD Card
+
+6. Preparing the SD card
+
+Insert the SD card in the system and find the device node for the SD card
+and all the partitions on the SD card
+~$ls /dev
+if device node is mmcblk0. Create partitions in SD card
+~$sudo fdisk -u=sectors /dev/mmcblk0
+
+enter p command to view all the partitions already present on the SD card.
+use d command to delete all the existing partition on SD card.
+
+create a new primary partition with command n p 1
+2048 to 34815
+
+create 2nd primary partiton with command n p 2
+starting form 34815 to the end
+
+write the partitons to SD card with command w
+
+Format SD card with file system vfat for 1st partition and ext3 for 2nd
+partition
+
+~ mkfs.vfat /dev/mmcblk0p1
+~ mkfs.ext3 /dev/mmcblk0p2
+
+-------------------------------------------------------------------------------
+7. File system
+
+download prebuilt filesystem from the following path
+http://hands.com/~lkcl/mele_debian_armhf_minimal.cpio.gz
+
+extract the gz filesystem file
+~$ gunzip -dk mele_debian_armhf_minimal.cpio.gz
+
+mount EXT3 partiton of SD card
+~$ mount /dev/mmcblk0p2 /mnt
+
+~$ cpio -idv < /path/to/mele_debian_armhf_minimal.cpio
+
+~$ umount /mnt
+
+-------------------------------------------------------------------------------
+8. Write U-boot and Kernel
+
+When u-boot was built output was u-boot-sunxi-with-spl.bin this file contains
+both u-boot and sunxi-spl. This has to be written on SD card starting at
+sector 8
+
+~$ dd if=u-boot-sunxi-with-spl.bin of=/dev/mmcblk0 bs=1024 seek=8
+
+Write the kernel image and script.bin in the 1st partition
+~$ mount /dev/mmcblk0p1 /mnt/
+~$ cp linux/arch/arm/boot/zImage /mnt/
+~$ cp linux/arch/arm/boot/dts/sun5i-a13-olinuxino-micro.dtb /mnt/
+
+Create a boot.cmd file in the 1st partition and convert it to boot.scr file
+using mkimage.
+
+Create boot.cmd in 1st partition with content
+
+fatload mmc 0 0x46000000 zImage
+fatload mmc 0 0x49000000 sun5i-a13-olinuxino-micro.dtb
+setenv bootargs console=ttyS0,115200 [earlyprintk] root=/dev/mmcblk0p2 rootwait panic=10 ${extra}
+bootz 0x46000000 - 0x49000000
+
+Convert boot.cmd to boot.scr
+~$ cd packages/u-boot/tools
+~$ mkimage -C none -A arm -T script -d /mnt/boot.cmd /mnt/boot.scr
+
+~$ umount /mnt
+
+
+Write the kernel modules that will be loaded dynamically in 2nd partition
+~$ mount /dev/mmcblk0p2 /mnt/
+~$ cp -a build/board_modules/lib/modules/4.3.0-rc1-g904c778-dirty \
+/mnt/lib/modules/
+~$ umount /mnt
+
+-------------------------------------------------------------------------------
+9. Error
+
+LD      u-boot
+  DTC     arch/arm/dts/sun5i-a10s-auxtek-t003.dtb
+In file included from arch/arm/dts/sun5i-a10s.dtsi:47:0,
+                 from arch/arm/dts/sun5i-a10s-auxtek-t003.dts:44:
+arch/arm/dts/sun5i.dtsi:47:39: fatal error: dt-bindings/dma/sun4i-a10.h: No 
+such file or directory
+compilation terminated.
+make[2]: *** [arch/arm/dts/sun5i-a10s-auxtek-t003.dtb] Error 1
+make[1]: *** [arch-dtbs] Error 2
+make: *** [dts/dt.dtb] Error 2
+
+---------------------------------------------------
+DTC     arch/arm/boot/dts/sun4i-a10-a1000.dtb
+In file included from arch/arm/boot/dts/sun4i-a10-a1000.dts:46:0:
+arch/arm/boot/dts/sun4i-a10.dtsi:46:41: fatal error: dt-bindings/thermal/thermal.h: No such file or directory
+compilation terminated.
+make[1]: *** [arch/arm/boot/dts/sun4i-a10-a1000.dtb] Error 1
+make: *** [dtbs] Error 2
+
+linux/arch/arm/boot/dts/include$ ln -s ../../../../../include/dt-bindings/ dt-bindings
+
+-------------------------------------------------------------------------------
+10.Refrences
+
+https://linux-sunxi.org/Mainline_U-Boot
+https://linux-sunxi.org/Mainline_Kernel_Howto
+https://linux-sunxi.org/Bootable_SD_card
+
