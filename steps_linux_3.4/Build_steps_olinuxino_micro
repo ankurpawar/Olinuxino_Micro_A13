@@ -177,7 +177,7 @@ sector 8
 
 Write the kernel image and script.bin in the 1st partition
 ~$ mount /dev/mmcblk0p1 /mnt/
-~$ cp u-boot-sunxi/arch/arm/boot/uImage /mnt/
+~$ cp linux-sunxi/arch/arm/boot/uImage /mnt/
 ~$ cp packages/script.bin /mnt/
 
 Create a boot.cmd file in the 1st partition and convert it to boot.scr file 
