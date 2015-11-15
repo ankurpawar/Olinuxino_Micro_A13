@@ -180,9 +180,50 @@ make: *** [dtbs] Error 2
 linux/arch/arm/boot/dts/include$ ln -s ../../../../../include/dt-bindings/ dt-bindings
 
 -------------------------------------------------------------------------------
-10.Refrences
+10. Using GPIO
+
+Connect the board to host using USB serial cable. Open minicom and set baud 
+rate to 115200, no hardware control . Power on the board. A prompt will
+appear
+
+Debian GNU/Linux wheezy/sid debian ttyS0
+
+debian login:
+
+enter user name:root
+enter passsword:password
+
+Last login: Thu Jan  1 00:00:14 UTC 1970 on ttyS0
+Linux debian 4.3.0-rc6-gfbe157b-dirty #1 SMP Sun Nov 15 11:01:49 IST 2015 armv7l
+
+The programs included with the Debian GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+root@debian:~#
+
+Now the shell is available for commands.
+
+root@debian:~# cd /sys/class/gpio
+root@debian:/sys/class/gpio#
+root@debian:/sys/class/gpio# echo 18 > export
+
+an new directory will appear with name gpio18
+
+root@debian:/sys/class/gpio# cd gpio18
+
+to write logic high write 0 in value file, like.
+root@debian:/sys/class/gpio/gpio18# echo 0 > value
+
+to cleanup come out of this directory and unexport file with the gpio number
+root@debian:/sys/class/gpio# echo 18 > unexport
+
+-------------------------------------------------------------------------------
+11.Refrences
 
 https://linux-sunxi.org/Mainline_U-Boot
 https://linux-sunxi.org/Mainline_Kernel_Howto
 https://linux-sunxi.org/Bootable_SD_card
-
+http://linux-sunxi.org/GPIO
