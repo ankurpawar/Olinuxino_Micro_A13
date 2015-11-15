@@ -214,8 +214,8 @@ an new directory will appear with name gpio18
 
 root@debian:/sys/class/gpio# cd gpio18
 
-to write logic high write 0 in value file, like.
-root@debian:/sys/class/gpio/gpio18# echo 0 > value
+to make pin logic high,write 1 in value file, like.
+root@debian:/sys/class/gpio/gpio18# echo 1 > value
 
 to cleanup come out of this directory and unexport file with the gpio number
 root@debian:/sys/class/gpio# echo 18 > unexport
