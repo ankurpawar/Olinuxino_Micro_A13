@@ -56,12 +56,16 @@ Mailine u-boot will be used
 5. Linux kernel
 
 ~$ cd packages
-~$ git clone git://github.com/mripard/linux.git
+~$ git clone https://github.com/linux-sunxi/linux-sunxi.git
+
+switch to sunxi-next branch
 
 ~$ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- sunxi_defconfig
 
 To do any changes in the kernel configuration
 ~$ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- menuconfig
+
+Build the kernel zImage and device tree blob
 ~$ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- zImage dtbs
 
 ~$ make ARCH=arm \
@@ -73,21 +77,19 @@ To do any changes in the kernel configuration
 	INSTALL_MOD_PATH=../../build/board_modules modules_install
 
 -------------------------------------------------------------------------------
-SD Card
-
 6. Preparing the SD card
 
 Insert the SD card in the system and find the device node for the SD card
 and all the partitions on the SD card
-~$ls /dev
+~$ ls /dev
 if device node is mmcblk0. Create partitions in SD card
-~$sudo fdisk -u=sectors /dev/mmcblk0
+~$ sudo fdisk -u=sectors /dev/mmcblk0
 
 enter p command to view all the partitions already present on the SD card.
 use d command to delete all the existing partition on SD card.
 
 create a new primary partition with command n p 1
-2048 to 34815
+from 2048 to 34815
 
 create 2nd primary partiton with command n p 2
 starting form 34815 to the end
@@ -97,8 +99,8 @@ write the partitons to SD card with command w
 Format SD card with file system vfat for 1st partition and ext3 for 2nd
 partition
 
-~ mkfs.vfat /dev/mmcblk0p1
-~ mkfs.ext3 /dev/mmcblk0p2
+~$ mkfs.vfat /dev/mmcblk0p1
+~$ mkfs.ext3 /dev/mmcblk0p2
 
 -------------------------------------------------------------------------------
 7. File system
@@ -149,7 +151,7 @@ Convert boot.cmd to boot.scr
 
 Write the kernel modules that will be loaded dynamically in 2nd partition
 ~$ mount /dev/mmcblk0p2 /mnt/
-~$ cp -a build/board_modules/lib/modules/4.3.0-rc1-g904c778-dirty \
+~$ cp -a build/board_modules/lib/modules/4.3.0-rc6-gfbe157b-dirty \
 /mnt/lib/modules/
 ~$ umount /mnt
 
