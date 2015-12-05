@@ -21,7 +21,7 @@ For reference download Allwinner A-13 datasheet and read sections that will
 help in board bringup.
 
 -------------------------------------------------------------------------------
-2. Download source code
+2. Create folder hierarchy
 
 olimex_board_bringup
 |
@@ -46,9 +46,14 @@ scratch is a different topic and the steps involved are not mentioned here.
 -------------------------------------------------------------------------------
 4. U-boot
 
-Mailine u-boot will be used 
+Mainline u-boot will be used 
 ~$ cd packages
 ~$ git clone http://git.denx.de/u-boot.git
+
+If git tree is not required then download latest compressed tarball
+from its FTP site ftp://ftp.denx.de/pub/u-boot/
+
+~$ cd u-boot
 ~$ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- A13-OLinuXinoM_defconfig
 ~$ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf-
 
@@ -105,6 +110,8 @@ partition
 -------------------------------------------------------------------------------
 7. File system
 
+Pre built Debian file system
+
 download prebuilt filesystem from the following path
 http://hands.com/~lkcl/mele_debian_armhf_minimal.cpio.gz
 
@@ -113,6 +120,8 @@ extract the gz filesystem file
 
 mount EXT3 partiton of SD card
 ~$ mount /dev/mmcblk0p2 /mnt
+
+~$ cd /mnt
 
 ~$ cpio -idv < /path/to/mele_debian_armhf_minimal.cpio
 
