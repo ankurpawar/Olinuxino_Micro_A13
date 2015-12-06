@@ -60,11 +60,22 @@ from its FTP site ftp://ftp.denx.de/pub/u-boot/
 -------------------------------------------------------------------------------
 5. Linux kernel
 
+Using the sunxi git source from github
 ~$ cd packages
+To download the complete git tree, with all the history and branches
 ~$ git clone https://github.com/linux-sunxi/linux-sunxi.git
-
 switch to sunxi-next branch
+~$ git checkout sunxi-next
 
+Single branch git with history depth equal to one.
+~$ git clone -b sunxi-next --depth=1 --single-branch https://github.com/linux-sunxi/linux-sunxi.git
+
+Using mainline kernel
+download kernel from ftp site
+~$ cd packages
+~$ wget https://www.kernel.org/pub/linux/kernel/v4.x/linux-4.3.tar.xz
+
+The following steps are common for both the kernel sources
 ~$ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- sunxi_defconfig
 
 To do any changes in the kernel configuration
@@ -189,7 +200,7 @@ make: *** [dtbs] Error 2
 linux/arch/arm/boot/dts/include$ ln -s ../../../../../include/dt-bindings/ dt-bindings
 
 -------------------------------------------------------------------------------
-10. Using GPIO
+10. Power up board
 
 Connect the board to host using USB serial cable. Open minicom and set baud 
 rate to 115200, no hardware control . Power on the board. A prompt will
@@ -215,22 +226,40 @@ root@debian:~#
 
 Now the shell is available for commands.
 
+root@debian:~# cd proc
+root@debian:/proc# cat cpuinfo
+processor       : 0
+model name      : ARMv7 Processor rev 2 (v7l)
+BogoMIPS        : 1001.88
+Features        : half thumb fastmult vfp edsp neon vfpv3 tls vfpd32
+CPU implementer : 0x41
+CPU architecture: 7
+CPU variant     : 0x3
+CPU part        : 0xc08
+CPU revision    : 2
+
+Hardware        : Allwinner A1X (Device Tree)
+Revision        : 0000
+Serial          : 162542170d4163e4
+
+-------------------------------------------------------------------------------
+11. Using GPIO
+
 root@debian:~# cd /sys/class/gpio
 root@debian:/sys/class/gpio#
 root@debian:/sys/class/gpio# echo 18 > export
 
-an new directory will appear with name gpio18
-
+A new directory will appear with name gpio18
 root@debian:/sys/class/gpio# cd gpio18
 
-to make pin logic high,write 1 in value file, like.
+To make pin logic high,write 1 in value file, like.
 root@debian:/sys/class/gpio/gpio18# echo 1 > value
 
-to cleanup come out of this directory and unexport file with the gpio number
+To cleanup come out of this directory and unexport file with the gpio number
 root@debian:/sys/class/gpio# echo 18 > unexport
 
 -------------------------------------------------------------------------------
-11.Refrences
+12.Refrences
 
 https://linux-sunxi.org/Mainline_U-Boot
 https://linux-sunxi.org/Mainline_Kernel_Howto
