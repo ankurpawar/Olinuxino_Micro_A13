@@ -1,3 +1,4 @@
-1. Steps that were followed to build the linux kernel for Olimex Olinuxino micro.
-2. Kernel .config file
-3. Script and fex used by the board during startup.
+1. Documents listing the steps to build the linux kernel for Olimex Olinuxino
+micro A13.
+2. Linux kernel form the sunxi community as well as the mainline kernel works
+for this board.
