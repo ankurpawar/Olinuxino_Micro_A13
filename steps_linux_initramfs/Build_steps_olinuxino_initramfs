@@ -1,0 +1,217 @@
+Steps to build initramfs for Olimex olinuxino micro A13
+-------------------------------------------------------------------------------
+1. Create a directory in home 
+
+$ mkdir ~/ramfs-a13
+
+required packages 
+-linux mainline kernel
+-buildroot
+-uboot mainline
+-linaro gcc-arm-linux-gnueabihf
+
+All the packages will be downloaded here. If packages are already available
+then copy or make link in ramfs-a13 directory.
+ 
+-------------------------------------------------------------------------------
+2. U-boot
+
+Mainline u-boot will be used
+$ cd ~/ramfs-a13
+
+To download git use
+$ git clone http://git.denx.de/u-boot.git
+
+If git tree is not required then download latest compressed tarball
+from its FTP ftp://ftp.denx.de/pub/u-boot/u-boot-2015.10.tar.bz2
+
+$ cd u-boot
+$ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- A13-OLinuXinoM_defconfig
+$ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf-
+
+-------------------------------------------------------------------------------
+3. Create root file system using buildroot
+
+This step is performed first as the root file system created will be used 
+during kernel compilation
+$ cd ~/ramfs-a13/
+
+While using distribution toolchain, buildroot complains so download Linaro
+toolchain tar from the website. Download linaro toolchain that will run on 
+x86_64.
+$ cd rootfs_build
+$ wget https://releases.linaro.org/components/toolchain/binaries/latest-5.1/arm-linux-gnueabihf/gcc-linaro-5.1-2015.08-x86_64_arm-linux-gnueabihf.tar.xz
+
+Extract toolchain
+$ tar -xf gcc-linaro-5.1-2015.08-x86_64_arm-linux-gnueabihf.tar.xz
+
+Download buildroot.
+$ wget https://buildroot.org/downloads/buildroot-2015.11.1.tar.bz2
+
+extract buildroot
+~$ tar -xf buildroot-2015.11.1.tar.bz2
+
+configure buildroot
+~$ cd buildroot-2015.11.1
+~$ make menuconfig
+
+During configuration select these options
+target options
+  target arch : arm little endian
+  target arch variant : cortex a8
+toolchain
+  toolchain type : external toolchain
+  toolchain origin : preinstalled toolchain
+  custom toolchain
+  toolchain path : ~/ramfs-a13/gcc-linaro-5.1-2015.08-x86_64_arm-linux-gnueabihf
+  Toolchain prefix : arm-linux-gnueabihf
+  External toolchain gcc version : 5.x
+  External toolchain kernel header series : 4.0.x
+  External toolchain C library : (glibc/eglibc)
+
+start building the binaries
+~$ make
+
+If the process ends without any error then the rootfs.tar file is created in 
+~/ramfs-a13/buildroot-2015.11.1/output/images directory
+
+Some modifications are required in rootfs. But first prepare an ext3 image 
+and mount it in a directory. By doing this the rootfs prepared by build
+buildroot can be extracted in a local directory.
+
+$ dd if=/dev/zero of=rootfs_img bs=1024 count=32768
+This will make a 32Mbyte empty file with name rootfs_img.
+
+$ mkfs.ext3 rootfs_img 
+format image with ext3 file system. If message come
+"rootfs_img is not a block special device.
+Proceed anyway? (y,n)"
+type y and continue.
+
+$ mkdir ~/ramfs-a13/sub
+$ sudo mount -o loop rootfs_img sub/
+$ sudo tar -xf ~/ramfs-a13/buildroot-2015.11.1/output/images/rootfs.tar -C ~/ramfs-a13/sub
+$ cd ~/ramfs-a13/sub
+
+init is the first process started by kernel when booting is done.In initramfs
+init needs to be present in the top level of root file system. Buildthis 
+created it inside sbin . Create a soft link for sbin/init.
+$ ln -s sbin/init init
+
+$ cd dev
+
+"Can't open /dev/null no such file or directory"
+To avoid this error create a node
+$ mknod null c 1 3
+
+Create a compressed cpio of this root file system 
+$ find . | cpio -o --format=newc > ../rootfs.cpio
+$ cd ..
+$ gzip -c rootfs.cpio > rootfs.cpio.gz
+
+Unmount
+$ umount sub
+
+rootfs.cpio.gz is the compressed rootfs that kernel will embed within itself
+as the initramfs.
+
+-------------------------------------------------------------------------------
+4. Kernel
+
+download mainline kernel
+$ cd ~/ramfs-a13
+$ wget https://www.kernel.org/pub/linux/kernel/v4.x/linux-4.3.tar.xz
+$ cd linux-4.3/
+$ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- sunxi_defconfig
+$ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- menuconfig
+
+Select these options during configuration
+Disable loadable module support
+General setup
+  Select : Initial RAM filesystem and RAM disk (initramfs/initrd) support
+  initramfs source files : ~/ramfs-a13/rootfs.cpio.gz
+
+There are other ways to pass source files for initramfs. It can be a 
+directory or a config file. In step 3, rootfs.tar was mounted on sub. The 
+path of this directory could be used as initramfs source files. Read the 
+reference [] for further explanation.
+
+Compile the kernel along with device tree
+$ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- zImage dtbs
+
+After successful compilation the rootfs.cpio.gz is embedded in zImage.
+ 
+-------------------------------------------------------------------------------
+5. Preparing the SD card
+
+Insert the SD card in the system and find the device node for the SD card
+and all the partitions on the SD card
+~$ ls /dev
+if device node is mmcblk0. Create partitions in SD card
+~$ sudo fdisk -u=sectors /dev/mmcblk0
+
+enter p command to view all the partitions already present on the SD card.
+use d command to delete all the existing partition on SD card.
+
+create a new primary partition with command n p 1
+from 2048 to 34815
+
+create 2nd primary partiton with command n p 2
+starting form 34815 to the end
+
+write the partitons to SD card with command w
+
+Format SD card with file system vfat for 1st partition and ext3 for 2nd
+partition
+
+~$ mkfs.vfat /dev/mmcblk0p1
+~$ mkfs.ext3 /dev/mmcblk0p2
+
+Second partiton will be left empty because root file system is contained
+within the kernel.
+
+-------------------------------------------------------------------------------
+6. Write U-boot and Kernel
+
+When u-boot was built output was u-boot-sunxi-with-spl.bin this file contains
+both u-boot and sunxi-spl. This has to be written on SD card starting at
+sector 8
+
+~$ dd if=u-boot-sunxi-with-spl.bin of=/dev/mmcblk0 bs=1024 seek=8
+
+Write the kernel image and script.bin in the 1st partition
+~$ mount /dev/mmcblk0p1 /mnt/
+~$ cp ~/ramfs-a13/linux/arch/arm/boot/zImage /mnt/
+~$ cp ~/ramfs-a13/linux/arch/arm/boot/dts/sun5i-a13-olinuxino-micro.dtb /mnt/
+
+Create a boot.cmd file in the 1st partition and convert it to boot.scr file
+using mkimage.
+
+Create boot.cmd in 1st partition with content
+
+fatload mmc 0 0x46000000 zImage
+fatload mmc 0 0x49000000 sun5i-a13-olinuxino-micro.dtb
+setenv bootargs console=ttyS0,115200 [earlyprintk] rootwait panic=10 ${extra}
+bootz 0x46000000 - 0x49000000
+
+Convert boot.cmd to boot.scr
+~$ cd packages/u-boot/tools
+~$ mkimage -C none -A arm -T script -d /mnt/boot.cmd /mnt/boot.scr
+~$ umount /mnt
+
+No root=/dev/mmcblk0p2 command is written as it is not required when
+using initramfs.
+
+-------------------------------------------------------------------------------
+7. Power up board
+
+Connect the board to host using USB serial cable.Insert the sd card. Open 
+minicom ($ sudo minicom -s )and set baud rate to 115200, no hardware control . 
+Power on the board. A prompt will appear
+
+-------------------------------------------------------------------------------
+References:
+[1] https://www.kernel.org/doc/Documentation/filesystems/ramfs-rootfs-initramfs.txt
+[2] http://processors.wiki.ti.com/index.php/Initrd
+[3] http://linux-sunxi.org/Mainline_Kernel_Howto
+[4] http://landley.net/writing/rootfs-programming.html
