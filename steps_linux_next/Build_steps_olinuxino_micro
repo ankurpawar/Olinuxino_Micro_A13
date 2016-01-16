@@ -70,12 +70,7 @@ switch to sunxi-next branch
 Single branch git with history depth equal to one.
 ~$ git clone -b sunxi-next --depth=1 --single-branch https://github.com/linux-sunxi/linux-sunxi.git
 
-Using mainline kernel
-download kernel from ftp site
-~$ cd packages
-~$ wget https://www.kernel.org/pub/linux/kernel/v4.x/linux-4.3.tar.xz
-
-The following steps are common for both the kernel sources
+Configure kernel for sunxi.
 ~$ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- sunxi_defconfig
 
 To do any changes in the kernel configuration

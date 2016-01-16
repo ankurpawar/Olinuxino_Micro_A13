@@ -93,10 +93,14 @@ $ sudo mount -o loop rootfs_img sub/
 $ sudo tar -xf ~/ramfs-a13/buildroot-2015.11.1/output/images/rootfs.tar -C ~/ramfs-a13/sub
 $ cd ~/ramfs-a13/sub
 
-init is the first process started by kernel when booting is done.In initramfs
-init needs to be present in the top level of root file system. Buildthis 
-created it inside sbin . Create a soft link for sbin/init.
+init is the first process started by kernel when booting is done. If kernel is
+built with initramfs then init needs to be present in the top level of root 
+file system. Buildroot creates init in sbin. Create a soft link for sbin/init.
 $ ln -s sbin/init init
+
+When initramfs is used devtmpfs was not automatically mounted.
+To mount devtmpfs add this line in ~/ramfs-a13/sub/etc/inittab
+::sysinit:/bin/mount -t devtmpfs none /dev (above ::sysinit:/bin/mkdir -p /dev/pts)
 
 $ cd dev
 
